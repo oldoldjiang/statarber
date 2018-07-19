@@ -1,6 +1,6 @@
 # statarber
 
-[![github-ci](https://github.com/oldoldjiang/statarber/badges/master/build.svg)](https://github.com/oldoldjiang/statarber/builds)
+[![Build Status](https://www.travis-ci.org/oldoldjiang/statarber.svg?branch=master)](https://www.travis-ci.org/oldoldjiang/statarber)
 [![codecov](https://codecov.io/gl/oldoldjiang/statarber/branch/HEAD/graph/badge.svg?token=iyITozaXcF)](https://codecov.io/gl/oldoldjiang/statarber)
 
 Statistic Arbitrage Strategy Research Toolbox
