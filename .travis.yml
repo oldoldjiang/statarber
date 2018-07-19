@@ -1,0 +1,6 @@
+language: r
+sudo: false
+cache: packages
+
+before_install:
+        - export PKG_CXXFLAGS="-std=c++11";
