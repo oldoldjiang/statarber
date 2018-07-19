@@ -3,14 +3,20 @@ sudo: true
 cache: packages
 env:
         global:
-                - PKG_CXXFLAGS="-std=c++11";
+                - PKG_CXXFLAGS="-std=c++11"
                 - HDF5_RELEASE_URL="https://support.hdfgroup.org/ftp/HDF5/releases"
+                - _R_CHECK_CRAN_INCOMING_=FALSE
+                - ASAN="-fsanitize=address -fno-omit-frame-pointer"
                 - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
-        matrix:
-                - HDF5_VERSION=1.8.14
-                - HDF5_VERSION=1.8.16
-                - HDF5_VERSION=1.10.0-patch1
                 - HDF5_VERSION=1.10.1
+addons:
+  apt:
+    packages:
+      - subversion
+      - autoconf
+      - build-essential
+      - libtool
+      - libmagick++-dev
 before_install:
         - chmod +x travis_setup.sh
         - ./travis_setup.sh
