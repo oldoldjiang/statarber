@@ -17,5 +17,6 @@ Imports:
   nnls,
   plyr,
   timeDate,
-  abind
+  abind,
+  stringi
 LinkingTo: Rcpp
