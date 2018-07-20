@@ -16,4 +16,4 @@ before_install:
         - ./configure --prefix=/usr/local --enable-cxx 
         - sudo make install
         - cd -
-        - apt install libhdf5-dev
+        - sudo apt install libhdf5-dev
