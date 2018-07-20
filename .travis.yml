@@ -1,6 +1,7 @@
 language: r
 sudo: true
 cache: packages
+warnings_are_errors: false
 env:
         global:
                 - PKG_CXXFLAGS="-std=c++11"
@@ -18,5 +19,12 @@ addons:
       - libtool
       - libmagick++-dev
 before_install:
-        - chmod +x travis_setup.sh
-        - ./travis_setup.sh
+        - cd ..
+        - wget "$HDF5_RELEASE_URL/hdf5-${HDF5_VERSION%.*}/hdf5-$HDF5_VERSION/src/hdf5-$HDF5_VERSION.tar.gz"
+        - tar -xzf "hdf5-$HDF5_VERSION.tar.gz"
+        - cd -
+        - cd ../"hdf5-$HDF5_VERSION"
+        - ./configure --prefix=/usr/local --enable-cxx 
+        - sudo make install
+        - cd -
+        - sudo apt install libhdf5-dev
