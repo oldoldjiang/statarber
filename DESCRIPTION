@@ -9,5 +9,13 @@ Description: More about what it does (maybe more than one line)
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
-Imports: Rcpp (>= 0.12.12)
+Imports: 
+  Rcpp (>= 0.12.12),
+  data.table,
+  glmnet,
+  h5,
+  nnls,
+  plyr,
+  timeDate,
+  abind
 LinkingTo: Rcpp
