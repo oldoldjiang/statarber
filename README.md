@@ -14,5 +14,3 @@ install.packages("devtools")
 devtools::install_git("https://github.com/oldoldjiang/statarber.git", 
   credentials = git2r::cred_user_pass("username", "password"))
 ```
-ls::build()
-```

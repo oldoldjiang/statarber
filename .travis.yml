@@ -18,7 +18,7 @@ addons:
       - build-essential
       - libtool
       - libmagick++-dev
-      - libhdf5d-ev
+      - libhdf5-dev
 before_install:
         - cd ..
         - wget "$HDF5_RELEASE_URL/hdf5-${HDF5_VERSION%.*}/hdf5-$HDF5_VERSION/src/hdf5-$HDF5_VERSION.tar.gz"
