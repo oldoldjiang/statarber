@@ -19,8 +19,6 @@ calc.alpha <- function(data, alpha.names, ret.name, method = "pearson"){
   return(ret)
 }
 
-library(ggplot2)
-
 setFwdRet <- function(data, periods = 0){
   data[,,by = c(K)]
 }
