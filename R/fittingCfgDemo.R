@@ -1,4 +1,4 @@
-fit.cfg <- list(
+demo.fit.cfg <- list(
   univ = 'zz500',
   md.ver = 'windzf',
   mkt = 'CHINA_STOCK',

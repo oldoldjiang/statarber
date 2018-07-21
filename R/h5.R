@@ -1,9 +1,33 @@
-savedftoH5 <- function(data, file,verbose = TRUE, overwrite = FALSE, dircreate = FALSE){
+#' save data.frame to h5
+#'
+#' @param data data.frame or data.table format
+#' @param file
+#' @param verbose
+#' @param overwrite
+#' @param dircreate logical, if FALSE, error raised if the direcotory of file doesnot exits.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' df <- data.frame(a = c(1,2), b = c('x','y'))
+#' write.h5(df, '~/dftest.h5', overwrite = TRUE)
+write.h5 <- function(data, file, verbose = TRUE, overwrite = FALSE, dircreate = FALSE){
   stopifnot(class(data) %in% c('data.table','data.frame'))
   mode <- ifelse(overwrite, 'w', 'w-')
   if(dircreate == TRUE) dir.create(dirname(file), FALSE, TRUE)
   if(verbose) print(paste('Writing:', file))
   if(file.exists(file) && overwrite == FALSE) stop('Error: file exist, please set overwrite = TRUE')
+
+  types <- unlist(lapply(data, class))
+  if(any(types %in% 'factor')){
+    idx <- which(types == 'factor')
+    if(verbose) print(paste('column ', idx, 'are factors, will set to chararcter'))
+    for(i in idx){
+      data[[i]] <- as.character(data[[i]])
+    }
+  }
+
   f <- h5file(file, mode)
   cnames <- colnames(data)
   h5attr(f, 'dim') <- dim(data)
@@ -14,7 +38,21 @@ savedftoH5 <- function(data, file,verbose = TRUE, overwrite = FALSE, dircreate =
   h5close(f)
   invisible(TRUE)
 }
-readdffromH5 <- function(file, verbose = TRUE){
+
+
+#' read data.frame in h5 file
+#'
+#' @param file
+#' @param verbose bool
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' #' df <- data.frame(a = c(1,2), b = c('x','y'))
+#' write.h5(df, '~/dftest.h5')
+#' df2 <- read.h5('~/dftest.h5')
+read.h5 <- function(file, verbose = TRUE){
   if(verbose) print(paste('Reading:',file))
   f <- h5file(file,'r')
   cnames <- h5attr(f,'colnames')

@@ -1,16 +1,17 @@
 ## sampling data is convenient to analyse sub group
-## sampling is different from groupping because sampling may only take a subset
 
 ## TODO list:
 ## 1. batch mode
 ## 2. return has NA???
+
 group.by.all  <- function(data){
   return(list(data))
 }
-group.by.stock <- function(data, by){
+group.by.instrument <- function(data, by){
   if(is.null(by)){
-    warning('by is NULL, try to use default stock colname')
+    warning('arg `by` is NULL, try to use default instrument colname')
     if('K' %in% colnames(data)) by = 'K'
+    else stop('')
   }
   if(inherits(data, "data.table")){
     res <- split(data, by = by)
@@ -20,28 +21,35 @@ group.by.stock <- function(data, by){
   }
 
 }
-group.by.flag  <- function(data, by, keep.name = NULL){
+#' grouping functions
+#'
+#' @param data a data.frame
+#' @param by
+#' @param names2keep
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' library(data.table)
+#' df <- data.table(stock=c(letters), forward_return = runif(26), date = 20180101, time = '15:00:00.000',industrygroup = c('xxx','ooo'), stringsAsFactors = FALSE)
+#' group.by.instrument(df,by = 'stock')
+#' group.by.flag(df, by = 'industrygroup')
+#' group.by.flag(df, by = 'industrygroup', names2keep = 'ooo')
+group.by.flag  <- function(data, by, names2keep = NULL){
   if(is.null(by)) stop('by should be a character in group.by.flag()')
-  if(inherits(x, "data.table")){
+  if(!inherits(data, "data.table") && inherits(data, "data.frame")) setDT(data) # convert to data.table to use split function
+  if(inherits(data, "data.table")){
     res <- split(data,by = by, keep.by = FALSE)
-    if(!is.null(keep.name)){
-      res <- res[keep.name]
+    if(!is.null(names2keep)){
+      res <- res[names2keep]
     }
     return(res)
   }else{
     stop('only data.table is supportted in groupping')
   }
 }
-#' only take
-#'
-#' @param data
-#' @param range
-#' @param fwd.var
-#'
-#' @return
-#' @export
-#'
-#' @examples
+
 sample.quantile <- function(data, range, fwd.var){
   nms <- names(data)
   range <- sort(range)
@@ -53,7 +61,7 @@ sample.quantile <- function(data, range, fwd.var){
   names(data) <- nms
   data
 }
-#' wapper function for sampling function
+#' wapper function for grouping function
 #'
 #' @param data
 #' @param by         character, one of colnames of data
@@ -65,16 +73,16 @@ sample.quantile <- function(data, range, fwd.var){
 #' @export
 #'
 #' @examples
-sample.factory <- function(data,
+group.factory <- function(data,
                            by = NULL,
-                           group.type = 'ALL',
-                           group.name = NULL){
-  if(group.type == 'ALL'){
+                           grouptype = 'ALL',
+                           names2keep = NULL){
+  if(grouptype == 'ALL'){
     res <- group.by.all(data)
-  }else if(group.type == 'EACH'){
-    res <- group.by.stock(data,by = by)
+  }else if(grouptype == 'EACH'){
+    res <- group.by.instrument(data,by = by)
   }else{
-    res <- group.by.flag(data, by = by, keep.by = group.name)
+    res <- group.by.flag(data, by = by, names2keep = names2keep)
   }
   res
 }
@@ -86,30 +94,30 @@ sample.factory <- function(data,
 #' @export
 #'
 #' @examples
-sample.gen.day <- function(day,
-                           alpha.dir,
-                           ret.dir,
-                           univ.dir = NULL,
-                           group.type = 'ALL',
-                           group.name = NULL,
+grouping.everyday <- function(date, alpha.dir, ret.dir, univ.dir, ind.dir, root.dir = '/',
+                           grouptype = 'ALL',
+                           names2keep = NULL,
                            by = NULL){
-  alpha  <- readicsdata(day, alpha.dir, des.format = 'data.table')
-  ret    <- readicsdata(day, ret.dir  , des.format = 'data.table')
-  data   <- merge(alpha,ret, all.x = TRUE)
 
-  if(!is.null(univ.dir)){
-    univ <- readicsdata(day, univ.dir, des.format = 'data.table')
-    data <- filte.univ(data, univ)
-  }
-  if(group.type == 'INDUSTRY'){
-
-  }
-  res <- sample.factory(data,
-                        group.type = group.type,
-                        group.name = group.name,
+  data <- get.mergeddata(dates = date, alpha.dir, ret.dir, univ.dir, ind.dir, root.dir)
+  res <- .group.factory(data,
+                        grouptype = grouptype,
+                        names2keep = names2keep,
                         by = by)
 
 }
+
+get.mergeddata <- function(dates, alpha.dir, ret.dir, univ.dir, ind.dir, root.dir = '/'){
+  alpha  <- readicsdata(dates, alpha.dir, des.format = 'data.table')
+  ret    <- readicsdata(dates, ret.dir  , des.format = 'data.table')
+  data   <- merge(alpha,ret, all.x = TRUE)
+  if(!is.null(univ.dir)){
+    univ <- readicsdata(dates, univ.dir, des.format = 'data.table')
+    data <- filte.univ(data, univ)
+  }
+  data
+}
+
 #' wrapper function for sampling
 #'
 #' @param dates
@@ -130,7 +138,7 @@ sample.gen.day <- function(day,
 #' @export
 #'
 #' @examples
-sample.gen.multiday <- function(dates,
+grouping.multiday <- function(dates,
                                 alpha.dir,
                                 ret.dir,
                                 univ.dir = NULL,
