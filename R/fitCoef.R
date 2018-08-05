@@ -192,12 +192,12 @@ fit.coef.cvnet <- function(data, xy.spec, d = '19911231', group.name = '00:00:00
 }
 
 
-fitBeta <- function(tradingday, sampler.dir,model.cfg=list(ALL="ALL_"),
+fitBeta <- function(dates, sampler.dir,model.cfg=list(ALL="ALL_"),
                     mode="ALL",
                     y.vars = c("fwd.Ret.DAILY.1","fwd.Ret.DAILY.5"),wgt.var=NULL,
                     ignore.empty.file=TRUE,
                     fit.func = fit.coef.cvnet, fit.para = list(), use.cache=TRUE, cache.coef.ptn=NULL,
-                    coef.max=Inf, coef.min=-Inf,coes=1,verbose=TRUE){
+                    coef.max=Inf, coef.min=-Inf,cores=1,verbose=TRUE){
 
   mode = match.arg(mode,choices = c('ALL','ROLL'))
   if( is.character(fit.func)){
@@ -218,11 +218,12 @@ fitBeta <- function(tradingday, sampler.dir,model.cfg=list(ALL="ALL_"),
     doMC::registerDoMC(cores = cores)
   }
 
-  N = length(tradingday)
+  N = length(dates)
 
-  if(mode="ALL"){
+  if(mode=="ALL"){
+
     sampled=NULL
-    cache.file = file.path(sampler.dir, paste("cache.RAW.",tradingday[1],".to.",tradingday[N],".N",N,".rds",sep=""))
+    cache.file = file.path(sampler.dir, paste("cache.RAW.",dates[1],".to.",dates[N],".N",N,".rds",sep=""))
     if(use.cache){
       if(file.exists(paste(cache.file,".end",sep="")) && file.exists(cache.file)){
         sampled=readRDS(cache.file)
@@ -230,8 +231,10 @@ fitBeta <- function(tradingday, sampler.dir,model.cfg=list(ALL="ALL_"),
     }
 
     if(is.null(sampled)){
-      data.g = llply(tradingday, function(d){
-        sampled = read.sampled(d, sampler.dir=sampler.dir, ignore.empty.file = ignore.empty.file)
+      data.g = llply(dates, function(d){
+        sampled = sample.read(file =  file.path(sampler.dir,paste0('RAW.',d,'.rds')),
+                              ignore.empty.file = ignore.empty.file,
+                              verbose = verbose)
       },.parallel=cores>1)
       which.null = unlist(lapply(data.g, is.null))
       data.g = data.g[!which.null]
@@ -251,7 +254,7 @@ fitBeta <- function(tradingday, sampler.dir,model.cfg=list(ALL="ALL_"),
     coef.d = panel.combine(llply(names(model.cfg),function(model){
       coefs.g = abind(llply(names(sampled),function(g){
         fitdata = sampled[[g]]
-        fitdata = fitdata[sapply(fitdata, is.numeric)]
+        fitdata = fitdata[,sapply(fitdata, is.numeric),with = FALSE]
 
 
         fitdata = as.matrix(fitdata)
@@ -280,36 +283,39 @@ fitBeta <- function(tradingday, sampler.dir,model.cfg=list(ALL="ALL_"),
         }
 
         xy.spec=list(x.vars = x.vars, y.vars = y.vars)
-        coefs = fit.func(fitdata,xy.spec,d="19991231",grp.name=g,pa.list=fit.para)
+        coefs = fit.func(fitdata,xy.spec,d="19991231",group.name=g,pa.list=fit.para)
       }),along=2)
       names(dimnames(coefs.g)) = c("D","G","X","Y")
       coefs.g = panel.add.dim(coefs.g,"M",model)
     }),default=0)
-  }else if(mode = "ROLL"){
+  }else if(mode == "ROLL"){
     cat("Fitting")
     cache.set = !is.null(cache.coef.ptn)
     use.cache = use.cache && cache.set
 
-    coef.d = abind(llply(tradingday, function(d){
+    coef.d = abind(llply(dates, function(d){
       cat(d)
-      cat(" ").d
+      cat(" ")
       coef.out.file = sub("YYYYMMDD",d,cache.coef.ptn)
 
       if( use.cache && file.exists(coef.out.file)){
         return(panel.read(coef.out.file, verbose = verbose))
       }
-      sampled = read.sampled(d,sampler.dir = sampler.dir, ignore.empty.file=ignore.empty.file)
+
+      sampled = sample.read(file = file.path(sampler.dir,paste0('RAW.',d,'.rds')),
+                            ignore.empty.file=ignore.empty.file,
+                            verbose = verbose)
       coefs.m = panel.combine(llply(names(model.cfg),function(model){
         coefs.g = abind(llply(names(sampled),function(g){
           fitdata = sampled[[g]]
-          fitdata =fitdata[sapply(fitdata,is.numeric)]
+          fitdata = fitdata[,sapply(fitdata,is.numeric),with = FALSE]
           fitdata = as.matrix(fitdata)
           x.vars = model.cfg[[model]]
           if(is.null(x.vars) || identical(x.vars,"ALL_")){
             x.vars = setdiff( dimnames(fitdata)[[2]],c(y.vars,wgt.var))
           }else if(!is.null(x.vars) && length(x.vars)==1 && length(grep("\\*",x.vars))>0) x.vars = setdiff(grep(x.vars,dimnames(fitdata)[[2]],value=TRUE),c(y.vars,wgt.var))
           xy.spec=list(x.vars=x.vars, y.vars = y.vars)
-          coefs = fit.func(fitdata,xy.spec,d=d,grp.name=g,pa.list=fit.para)
+          coefs = fit.func(fitdata,xy.spec,d=d,group.name=g,pa.list=fit.para)
         }),along=2)
         names(dimnames(coefs.g))=c("D","G","X","Y")
         coefs.g = panel.add.dim(coefs.g,"M",model)
@@ -378,7 +384,7 @@ fitBeta <- function(tradingday, sampler.dir,model.cfg=list(ALL="ALL_"),
 #' @export
 #'
 #' @examples
-gen.alp.on.coef <- function(tradingday, coef, term.path, model,
+gen.alp.on.coef <- function(dates, coef, term.path, model,
                             group.name, alpha.path, alpha.name = model,
                             lag = 1, mkt = 'CHINA_STOCK', cores = 1,
                             alpha.only = TRUE, verbose = TRUE, use.cache = TRUE,
@@ -390,7 +396,7 @@ gen.alp.on.coef <- function(tradingday, coef, term.path, model,
 
 
   if(length(group.name)!=1 || length(model)!=1) stop('only support one group or model')
-  if(alpha.only && sdate != edate){
+  if(alpha.only && length(dates)>1){
     use.cache = FALSE
     stop('only support one day call when alpha.only = TRUE')
   }
@@ -400,7 +406,7 @@ gen.alp.on.coef <- function(tradingday, coef, term.path, model,
   alpha.path <- sub('MODELNAME',model, alpha.path)
   alpha.path <- sub('GROUPNAME', group.name, alpha.path)
 
-  alpha.name <- sub("(fwd)\\.(Ret)\\.(.*)\\.(.*)",
+  alpha.names <- sub("(fwd)\\.(Ret)\\.(.*)\\.(.*)",
                     paste0(alpha.name, ".\\3.\\4"),
                     dimnames(coef)[[4]])
 
@@ -408,9 +414,9 @@ gen.alp.on.coef <- function(tradingday, coef, term.path, model,
 
   order <- null.replace(fit.para$order, 1)
 
-
-  alpha.files <- llply(tradingday, function(d){
+  alpha.files <- llply(dates, function(d){
     alpha.file <- sub('YYYYMMDD', d, alpha.path)
+    if(verbose) print(paste('gen alpha on coef:',alpha.file))
     if(!alpha.only && use.cache && file.exists(alpha.file)) return(NULL)
 
     term.file <- sub('YYYYMMDD', d, term.path)
@@ -421,7 +427,7 @@ gen.alp.on.coef <- function(tradingday, coef, term.path, model,
       return(NULL)
     }
 
-
+    terms = panel.read(file = term.file,verbose = verbose)
     terms[is.na(terms)] <- 0
 
     coefd <- as.integer(dimnames(coef)[[1]])
@@ -452,17 +458,17 @@ gen.alp.on.coef <- function(tradingday, coef, term.path, model,
         alpha <- abind(llply(dimnames(coef)$Y, function(y){
           alpha.y <- aaply(KV[common.keys, dimnames(coef)$X[-1] * adrop(coef[as.character(coefd), common.keys, -1, y, model, drop = FALSE])])
         }))
-      }else if(gsub){
-        common.keys <- intersect()
-      }else{
+      }else if(group.name == 'ALL'){
         beta <- adrop(coef[as.character(coefd), group.name, -1,, model, drop = FALSE], c(1,2,5))
         alpha <- KV[,rownames(beta), drop = FALSE] %*% beta
+      }else if(gsub){
+        common.keys <- intersect()
       }
     }, .parallel = cores > 1, .drop = FALSE), c(3,1,2,4))
 
-    dimnames(alpha.v)[[4]] <- alpha.name#s
+    dimnames(alpha.v)[[4]] <- alpha.names
     names(dimnames(alpha.v)) <- c('K','D','T','V')
-    if(alpha.only | onecache.only) return(alpha.v)
+    if(alpha.only) return(alpha.v)
     dir.create(dirname(alpha.file), FALSE, TRUE)
     panel.write(alpha.v, alpha.file, verbose = verbose, overwrite = !use.cache)
     alpha.file
@@ -471,11 +477,6 @@ gen.alp.on.coef <- function(tradingday, coef, term.path, model,
   if(alpha.only){
     alpha.files[[1]]
   }else{
-    if(onecache.only){
-      alpha.combine <- panel.combine(alpha.files)
-      dir.create(dirname(alpha.path), FALSE, TRUE)
-      panel.write(alpha.combine, file.path(dirname(alpha.path)))
-    }
     alpha.names
   }
 }

@@ -196,26 +196,6 @@ fit.process <- function(cfg,
       }
     }
 
-    print(paste("Non-zero coef # ", mean(aaply(coef[,,,,1,drop=FALSE],c(1:2,4:5),function(x)sum(abs(x)>1e-10),.drop=FALSE)),sep=""))
-    midx = if(auto.per.term.fit){1:dim(coef)[5]else{1}}
-    tmpcoef = adrop(coef[dim(coef)[1],1,,1,midx,drop=FALSE],c(1,2,4))
-    print(tmpcoef[abs(tmpcoefp[,1])>1e-10,,drop=FALSE])
-
-    gc()
-
-    ## generate alpha
-    anames = ifelse(auto.per.term.fit,dimnames(coef)[['M']],dimnames(coef)[['M']][1])
-    for(aname in anames){
-      anameVer = ifelse(assume.coef.stable,aname,paste0(aname,sprintf(".coef.lag%d.%s",coef.lag,coef.Ver)))
-      alpha.path = file.path(root.dir,"alpha",mkt,freq,anameVer,"YYYYMMDD.h5")
-      alpha.names = gen.alp.on.coef(stDate = cfg$date$os.sdate, edDate = cfg$dates$os.edate, coef=coef[,,,,aname,drop=FALSE],
-                                    term.path=dir.list,model=aname,group.name=groupType,alphaname=aname,mkt=cfg$mkt,lag=coef.lag,
-                                    fit.para=fit.para,alpha.path=alpha.path,cores = cores, include.days=OOS.days,
-                                    use.cache=use.cache,verbose=verbose,onecache.only=onecache.only)
-      alpha.vers=union(alpha.vers,anameVer)
-      all.alpha.names=union(all.alpha.names,alpha.names)
-      gc()
-    }
   }
 
   # eval result

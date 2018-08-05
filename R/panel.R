@@ -1,4 +1,14 @@
 
+#' read n-dim array from h5 file
+#'
+#' @param file
+#' @param verbose
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' a <- panel.read('~/data/md/CHINA_STOCK/DAILY/test/20130403.h5')
 panel.read <- function(file, verbose = TRUE){
   if(verbose) print(paste('Reading:',file))
   f <- h5file(file,'r')
@@ -18,11 +28,28 @@ panel.read <- function(file, verbose = TRUE){
   return(a)
 }
 
+#' write n-dim array to h5 file
+#'
+#' @param data
+#' @param file
+#' @param key
+#' @param dircreate
+#' @param verbose
+#' @param overwrite
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' a <- array(1:12,dim = c(1,4,1,3), dimnames = list(S = 'a', D = 20180103:20180106,T='15:00:00.000',C=c('x','y','z')))
+#' panel.write(a, '~/test.h5')
 panel.write <- function(data, file, key = 'ndarray', dircreate = FALSE, verbose = TRUE, overwrite = FALSE){
   mode <- ifelse(overwrite, 'w', 'w-')
   if(dircreate == TRUE) dir.create(dirname(file), FALSE, TRUE)
   if(verbose) print(paste('Writing:', file))
   if(file.exists(file) && overwrite == FALSE) stop('Error: file exist, please set overwrite = TRUE')
+
+  if(mode == 'w' && file.exists(file)) file.remove(file) ## I don't known why 'w' break down, fix this issue
 
   f <- h5file(file, mode)
   f[key] <- data
@@ -40,6 +67,20 @@ panel.write <- function(data, file, key = 'ndarray', dircreate = FALSE, verbose 
   invisible(TRUE)
 }
 
+#' add 1 dim without add more data
+#'
+#' @param panel
+#' @param label
+#' @param dnames
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' a <- array(1:12,dim = c(1,4,1,3), dimnames = list(S = 'a', D = 20180103:20180106,T='15:00:00.000',C=c('x','y','z')))
+#' a <- panel.add.dim(a, label = 'O', dnames = 'G1')
+#' dim(a)
+#' dimnames(a)
 panel.add.dim <- function(panel, label, dnames){
   stopifnot(length(label)==1)
   stopifnot(length(dnames)>0)
@@ -50,6 +91,20 @@ panel.add.dim <- function(panel, label, dnames){
   panel
 }
 
+#' combine multi n-dim array into 1 n-dim array
+#'
+#' @param panel.list a list of n-dim array
+#' @param default
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' a1 <- array(1:12,dim = c(1,4,1,3), dimnames = list(S = 'a', D = 20180103:20180106,T='15:00:00.000',C=c('x','y','z')))
+#' a2 <- array(13:24,dim = c(1,4,1,3), dimnames = list(S = 'b', D = 20180103:20180106,T='15:00:00.000',C=c('x','y','z')))
+#' b <- panel.combine(list(a1,a2))
+#' dim(b)
+#' dimnames(b)
 panel.combine <- function(panel.list, default = NA){
   if(!is.list(panel.list)){
     stop('should pass a list of panel into this functions')
@@ -67,7 +122,7 @@ panel.combine <- function(panel.list, default = NA){
     out <- array(default, dim = sapply(dnames, length),
                  dimnames = dnames)
     for(panel in panel.list){
-      if(length(dimnames(panel))==4){
+      if(length(dimnames(panel))==4){ # faster for 4-dim, which is the most common situation
         out[dimnames(panel)[[1]],
               dimnames(panel)[[2]],
               dimnames(panel)[[3]],
@@ -83,6 +138,16 @@ panel.combine <- function(panel.list, default = NA){
 
 }
 
+#' comvert n-dim array to data.frame by specific rule
+#' @description
+#' @param panel
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' a <- array(1:12,dim = c(1,4,1,3), dimnames = list(S = 'a', D = 20180103:20180106,T='15:00:00.000',C=c('x','y','z')))
+#' df <- panel2df(a)
 panel2df <- function(panel){
   dim <- dim(panel)
   dim.len <- length(dim)
@@ -98,11 +163,24 @@ panel2df <- function(panel){
   }
   panel[,c(names(dnames)[-dim.len], dnames[[dim.len]]), with = FALSE]
 }
-panel.read.data.table <- function(file, verbose = TRUE){
-   panel <- panel.read(file, verbose)
-   panel2df(panel)
-}
-readicsdata <- function(dates, pathes,
+
+#' main API for reading clean data
+#'
+#' @param dates
+#' @param pathes
+#' @param src.format
+#' @param des.format
+#' @param verbose
+#' @param missing.allow
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' pathes <- path.helper(dtype = c('md','ret'),ver = 'test')
+#' a <- data.read(20170502,pathes)
+data.read <- function(dates, pathes,
                         src.format = c('panel.h5','data.frame.h5','rds','csv'),
                         des.format = c('panel','data.table'),
                         verbose = TRUE,
@@ -119,7 +197,9 @@ readicsdata <- function(dates, pathes,
   format.pair <- paste0(src.format,'.',des.format)
   read.func <- switch(format.pair,
                         panel.h5.panel = panel.read,
-                        panel.h5.data.table = panel.read.data.table,
+                        panel.h5.data.table = function(file, verbose = TRUE){
+                          panel <- panel.read(file, verbose)
+                          panel2df(panel)},
                         data.table.h5.data.table = stop,
                         rds.data.table = readRDS,
                         csv.data.table = fread)
