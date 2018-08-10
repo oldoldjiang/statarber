@@ -51,6 +51,7 @@ path.helper <- function(dtype = 'md',mkt = 'CHINA_STOCK',freq = 'DAILY',
     valid <- lapply(1:nrow(comb), function(i){
       p <- paste(comb[i,], collapse = '/')
       if(path.check && !file.exists(p)){
+        print(paste(p,'not exists'))
         return(NULL)
       }else{
         return(p)
@@ -59,3 +60,11 @@ path.helper <- function(dtype = 'md',mkt = 'CHINA_STOCK',freq = 'DAILY',
     valid <- unlist(valid[!unlist(lapply(valid,is.null))])
     return(valid)
 }
+
+endswith <- function(str, matchstr){
+  substr(str, nchar(str)-nchar(matchstr)+1, nchar(str)) == matchstr
+}
+startswith <- function(str, matchstr){
+  substr(str, 1, nchar(str)) == matchstr
+}
+

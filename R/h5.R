@@ -35,7 +35,7 @@ df.write <- function(data, file, verbose = TRUE, overwrite = FALSE, dircreate = 
     h5attr(f, 'dim') <- dim(data)
     h5attr(f, 'colnames') <- cnames
     for(name in cnames){
-      f[name] <- data[[name]]
+      f[[name]] <- data[[name]]
     }
     h5close(f)
     invisible(TRUE)
@@ -63,7 +63,7 @@ df.read <- function(file, verbose = TRUE, format = 'h5'){
     f <- h5file(file,'r')
     cnames <- h5attr(f,'colnames')
     raw <- lapply(cnames,function(name){
-      f[name][]
+      f[[name]][]
     })
     names(raw) <- cnames
     res <- as.data.frame(raw,stringsAsFactors = FALSE)

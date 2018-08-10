@@ -1,25 +1,24 @@
 demo.fit.cfg <- list(
-  univ = 'zz500',
-  md.ver = 'windzf',
-  mkt = 'CHINA_STOCK',
+  univ = 'sh',
+  mkt  = 'CHINA_STOCK',
   freq = 'DAILY',
+  rt.pattern   = 'fwd.Ret.DAILY.N',
   root.dir = '~/data',
-  periods = c(-2, 1, 5),
-  univ.ver = '',
-  grouptype= 'ALL', ## conflict with sampler group type???
-  groupname= 'ALL', ## conflict with sampler group name???
+  report.dir = '~/report/', # where to save report and fitted alpha
+  periods = c(1, 5),
+  focus.period = 5,
+
   dates = list(
-    ins.rule.file = '~/',
-    ins.grp = 'INS1',
-    sdate = 20170101,
-    edate = 20180101,
+    ins.rule.file = '~/data/dates/fitdate',
+    ins.group = 'INS1',
+    sdate = 20151102,
+    edate = 20160201,
     omit.days = NULL,
-    max.rpt.date = 20170701,
 
-    os.sdate = 20170901,
-    os.edate = 20170801,
+    os.sdate = 20160202,
+    os.edate = 20160301,
 
-    oos.grp = c("INS1","INS2","OOS")
+    oos.group = c("INS1","INS2","OOS")
   ),
   fitter.list  = list(
     OLS = list(mode="ALL",fit.func="OLS"),
@@ -31,13 +30,16 @@ demo.fit.cfg <- list(
     CVNETROLL100HL30N1=list(mode="ROLL",fit.func="CVNET",WINDOW=100,HL=30,NDAY=1)
   ),
   sampler.list = list(
-    ALL=list(group.type="ALL", dir.list = c("/mnt/analysis/ics/alpha/CHINA_STOCK/DAILY/zfb_smallUniv/YYYYMMDD.h5"))
+    ALL=list(group.type="ALL", group.name = 'ALL',
+             dir.list = c("~/data/alpha/CHINA_STOCK/DAILY/f1/","~/data/alpha/CHINA_STOCK/DAILY/f2/"),
+             quantile.var = NULL, quantile.range = NULL,
+             univ.set = NULL, time.set = NULL)
   ),
   model.list   = list(
     ALL = "ALL_",
-    zfb="alphazf2b"
+    test=c("f1","f2")
   ),
   fit.list = list(
-    alpha = list(sampler="ALL",fitter="CVNET",model="zfb")
+    fit.test = list(sampler="ALL",fitter="CVNET",model="test")
   )
 )

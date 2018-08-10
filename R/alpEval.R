@@ -1,81 +1,144 @@
-calc.alpha <- function(data, alpha.names, ret.name, method = "pearson"){
-  cnames <- colnames(data)
-  if(any(!alpha.names %in% cnames)){
-    stop(paste("alpha name not in data:", alpha.names[!alpha.names %in% cnames]))
-  }
-  if(!ret.name %in% cnames){
-    stop(paste("return name not in data:", ret.name))
-  }
+prepareData <- function(dates, apathes, rpathes, upath = NULL){
+  alpha <- data.read(dates, pathes = apathes, des.format = 'data.table')
+  ret   <- data.read(dates, pathes = rpathes, des.format = 'data.table')
+  data  <- merge(alpha, ret, all.x = TRUE) # only care about those with alpha
 
-  ret <- data[,lapply(alpha.names,function(an){
-    cor(get(an), get(ret.name),use = "complete.obs", method = method) * sd(get(ret.name), na.rm = TRUE)
-  }),by=c(DNAMES$D,DNAMES$T)]
-  setnames(ret, 3:4, alpha.names)
-
-  return(ret)
-}
-
-setFwdRet <- function(data, periods = 0){
-  data[,,by = c(DNAMES$K)]
-}
-
-gen.report <- function(data = NULL, cfg = NULL){
-  if(!is.null(data)){ # use given data
-
-  }else{ # read data from cfg
-
-  }
-  focus.period <- cfg$focus.period
-
-}
-plot.alpha <- function(alpha.data, id, alpha.names = NULL){
-
-  cnames <- colnames(alpha.data)
-  if(is.null(alpha.names)){
-    alpha.names <- cnames[!cnames %in% c(DNAMES$K,DNAMES$D,DNAMES$T)]
-  }
-
-  plot.data <- melt(alpha.data, id = id)
-  g <- ggplot(plot.data, aes(x = as.Date(get(id),format = '%Y%m%d'), y = value, colour = variable, group = variable)) +
-    geom_line() +
-    scale_x_date() +
-    xlab(id) +
-    ylab("cummulative alpha") +
-    scale_colour_hue("alpha name")
-  plot(g)
-}
-getICarray <- function(x, alphaNames, fwdNames, univName, method = "pearson"){
-  periods = name2value(fwdNames)[['v']]
-  tmp = array(0, dim = c(length(fwdNames), length(alphaNames)), dimnames = list(periods, alphaNames))
-  for ( a in 1:length(alphaNames)){
-    for ( ff in 1:length(alphaNames)){
-      xx = x[,alphaNames[a]]
-      yy = x[,fwdNames[a]]
-      xx = xx[which(x[,univName]==1)]
-      yy = yy[which(x[,univName]==1)]
-      if (period[ff] > 0){ tmp[ff,a] = cor(xx,yy,method = method, use = "pairwise.complete.obs")}
-      else { tmp[ff,a] = cor(xx,yy,method = method, use = "pairwise.complete.obs")}
+  rnames <- basename(rpathes)
+  for(rn in rnames){
+    if(anyNA(data[[rn]])){
+      stop(paste('NA in',rn))
     }
   }
-  return(tmp)
+
+  if(!is.null(upath)){
+    univ <- data.read(dates, pathes = upath, des.format = 'data.table')
+    data <- merge(data, univ, all.y = TRUE)
+    uname <- basename(upath)
+    if(!all(data[[uname]]==1)) stop('not all universe indicators are 1')
+  }
+  return(data)
+}
+calcAlpha <- function(data, anames, rnames, method = "pearson"){
+
+  pairs <- c(outer(anames, rnames,paste,sep = '_'))
+  pairs <- lapply(pairs, function(p) strsplit(p,'_')[[1]])
+  names(pairs) <- sapply(pairs,function(x) paste(x,collapse  = '_'))
+
+  # p[1] is alpha name, p[2] is forward return name
+  alpha <- data[,lapply(pairs,function(p){
+      cor(.SD[[p[1]]], .SD[[p[2]]],use = "complete.obs", method = method) *
+      sd(.SD[[p[2]]], na.rm = TRUE) /
+      name2value(p[2])[['n']]
+  }),by=c(DNAMES$DATE, DNAMES$TIME)]
+
+  return(alpha)
+}
+calcRetWithAlphaWeight <- function(data, anames, rnames){
+
+  pairs <- c(outer(anames, rnames,paste,sep = '_'))
+  pairs <- lapply(pairs, function(p) strsplit(p,'_')[[1]])
+  names(pairs) <- sapply(pairs,function(x) paste(x,collapse  = '_'))
+
+  # p[1] is alpha name, p[2] is forward return name
+  ret <- data[,lapply(pairs,function(p){
+    sum(.SD[[p[1]]] * .SD[[p[2]]], na.rm = TRUE)
+  }),by=c(DNAMES$DATE, DNAMES$TIME)]
+  return(ret)
+
+}
+calcMeanRetQuantile <- function(data, anames, rname, nquantile = 30){
+  avgret <- copy(data)
+  for(an in anames){
+    # scale (1,N) to (1,nquantile)
+    avgret[,(an):=round((order(get(an))-1)*(nquantile-1)/.N+1), by = c(DNAMES$DATE, DNAMES$TIME)]
+  }
+
+  new.anames <- paste(anames,rname,sep = '_')
+  setnames(avgret,anames,new.anames)
+  avgret <- melt(avgret[,c(new.anames,rname), with = FALSE], id = rname)
+  avgret <- avgret[,mean(get(rname), na.rm = TRUE),by=c('variable','value')]
+  setnames(avgret,1:3,c('anames','quantile','avgret'))
+  return(avgret)
+}
+calcCumDeltaMeanRetQuantile <- function(data, anames, rname, dtname, nquantile = 30, ntop = round(nquantile/6)){
+  cnames <- colnames(data)
+  if(any(!anames %in% cnames)){
+    stop(paste("alpha name not in data:", anames[!anames %in% cnames]))
+  }
+  if(!rname %in% cnames){
+    stop(paste("return name not in data:", rname))
+  }
+  stopifnot(ntop>=2)
+
+  diffq <- copy(data)
+  for(an in anames){
+    # scale (1,N) to (1,nquantile)
+    diffq[,(an):=round((order(get(an))-1)*(nquantile-1)/.N+1), by = c(DNAMES$DATE, DNAMES$TIME)]
+  }
+
+  diffq[,(dtname):=paste(get(DNAMES$DATE),get(DNAMES$TIME))]
+  a_rnames <- paste(anames,rname,sep = '_')
+  setnames(diffq,anames,a_rnames)
+
+  diffq <- melt(diffq[,c(a_rnames,rname,dtname), with = FALSE], id = c(rname,dtname))
+  diffq <- diffq[,mean(get(rname), na.rm = TRUE),by=c('variable','value',dtname)]
+  setnames(diffq,1:4,c('anames','quantile',dtname,'avgret'))
+  diffq <- diffq[quantile <= ntop]
+  diffq[,quantile:=as.integer(quantile)]
+  diffq[,`:=`(
+    diffret = c(NA,-diff(avgret[order(quantile)])),
+    quantile = 0:(ntop-1)
+  ),by=c('anames',dtname)]
+  diffq <- diffq[quantile!=0] # remove NA
+  setorderv(diffq, dtname)
+  diffq[,cumdiffret:=cumsum(avgret),by=c('anames','quantile')]
+  diffq[,(dtname):=strptime(paste0(get(dtname)), format = '%Y%m%d %H:%M:%OS')]
+  diffq <- diffq[,c('anames','quantile',dtname,'cumdiffret'),with = FALSE]
+  return(diffq)
+}
+calcAlphaCor <- function(data, anames, method =  'pearson'){
+  alphacor <- cor(alphacor[,anames, with =FALSE],use = 'complete.obs', method = method)
+  return(alphacor)
 }
 
-###########################################################################################################
-calcICDateRange <- function( mdFwd, mdAlpha, mdUniv, method = "pearson"){
-  md = panel.combine(list(mdFwd, mdAlpha, mdUniv))
-  tnames = dimnames(md)[['T']]
-  alphaNames = dimnames(mdAlpha)[['V']]
-  fwdNames = dimnames(mdFwd)[['V']]
-  univName = dimnames(mdUniv)[['V']]
-  tuniv = dimnames(mdUniv)[['T']]
-  for ( t in tnames){
-    md[,,t,univName] = md[,,tuniv,univName]
-  }
-  md1 = aaply(md, c(2,3), getICarray, alphaNames, fwdNames, univName, method = method, .drop=FALSE)
-  md1 = aperm(md1, c(3,1,2,4))
-  names(dimnames(md1)) = c("K","D","T","V")
-  return(md1)
+calcHitRatio <- function(data, anames, rname){
+
+  hr <- copy(data)
+
 }
+
+calcCoverage <- function(data, anames){
+  # usually universe does not change during 1 day
+  # data here is not na-handled
+
+  cv <- data[,lapply(anames, function(an){
+    1-(sum(is.na(an)) + sum(an==0,na.rm = TRUE))/.N # na value and zero value are invalid
+  }),by=c(DNAMES$DATE, DNAMES$TIME)]
+  return(cv)
+}
+
+calcICDecay <- function(data, anames, rnames){
+
+  pairs <- c(outer(anames, rnames,paste,sep = '_'))
+  pairs <- lapply(pairs, function(p) strsplit(p,'_')[[1]])
+  names(pairs) <- sapply(pairs,function(x) paste(x,collapse  = '_'))
+
+  # p[1] is alpha name, p[2] is forward return name
+  icdecay <- data[,lapply(pairs,function(p){
+    cor(.SD[[p[1]]], .SD[[p[2]]],use = "complete.obs", method = 'pearson')
+  }),by=c(DNAMES$DATE, DNAMES$TIME)]
+  icdecay <- colMeans(icdecay[,-c(1,2),with = FALSE],na.rm = TRUE)
+  return(icdecay)
+
+}
+
+calcAlphaAutoCor <- function(data, anames){
+
+}
+
+
+
+
 
 calcICMean <- function(mdICDateRange, addZero = TRUE){
   md = adrop(aaply(mdICDateRange, c(1,4), mean, na.rm = TRUE, .drop = FALSE),3)
@@ -174,36 +237,10 @@ calcIRYears <- function(mdICDateRange){
   mdIRYears = panel.combine(mlist)
 }
 
-clacRetWithAlphaWeight <- function(x,alphaNames,fwdNames,univName){
-  x1 = x[which(x[,univName]==1),c(alphaNames,fwdNames)]
-  tmpdata = array(0,dim = c(length(fwdNames),length(alphaNames)),dimnames = list(name2value(fwdNames)[['v']],alphaNames))
-  for ( i in 1:length(fwdNames)){
-    for( j in 1:length(alphaNames)){
-      tmpdata[i,j] = sum(x1[,alphaNames[j]]*x1[,fwdNames[i]],na.rm=TRUE)
-    }
-  }
-  tmpdata
-}
-
-#calc alpha
-calcAlpha <- function(mdFwd, mdAlpha, mdUniv, method = "pearson", quickTest = FALSE){
 
 
-
-}
 ###############################################################################################################################
-# cumulative alpha = cumsum(std * ic)
-# cumulative alpha each year
-# relativea alpha
-# alpha delta
-# cumulative alpha use alpha as weight
 
-# mean return quantile  x: each alpha quantile   y: mean return   z: each alpha@ret
-
-# alpha correlation matrix: mean(cor(alpha1, alpha2) for each day) OR cor(alpha1 of whole history,
-#                                                                         alpha2 of whole history)
-# IC_pearson     x
-# IC_spearman
 # ICIR           z: whole period + each year     y: ICIR
 # mean return    z: whole period + each year     y: mean return   x: period
 # return to alpha x:

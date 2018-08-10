@@ -13,7 +13,7 @@ group.by.all  <- function(data){
 #'
 #' @param data a data.frame
 #' @param by
-#' @param names2keep character vector, subset of `by` column
+#' @param group.name character vector, subset of `sby` column
 #'
 #' @return
 #' @export
@@ -23,15 +23,15 @@ group.by.all  <- function(data){
 #' df <- data.table(stock=c(letters), forward_return = runif(26), date = 20180101, time = '15:00:00.000',industrygroup = c('xxx','ooo'), stringsAsFactors = FALSE)
 #' group.by.instrument(df,by = 'stock')
 #' group.by.flag(df, by = 'industrygroup')
-#' group.by.flag(df, by = 'industrygroup', names2keep = 'ooo')
-group.by.flag  <- function(data, by, names2keep = NULL, keep.by = TRUE){
+#' group.by.flag(df, by = 'industrygroup', group.name = 'ooo')
+group.by.flag  <- function(data, by, group.name = NULL, keep.by = TRUE){
   if(is.null(by)) stop('`by` should be a character')
   if(!inherits(data, "data.table") && inherits(data, "data.frame")) setDT(data) # convert to data.table to use split function
   if(inherits(data, "data.table")){
     stopifnot(by %in% colnames(data))
     res <- split(data,by = by, keep.by = keep.by)
-    if(!is.null(names2keep)){
-      res <- res[names2keep]
+    if(!is.null(group.name)){
+      res <- res[group.name]
     }
     return(res)
   }else{
@@ -39,12 +39,12 @@ group.by.flag  <- function(data, by, names2keep = NULL, keep.by = TRUE){
   }
 }
 
-sample.quantile <- function(data, range, fwd.var){
+sampling.quantile <- function(data, range, var){
   nms <- names(data)
   range <- sort(range)
   if(length(range)!=2) stop('range should be a length-2 numeric vector')
   data <- lapply(names(data), function(x){
-    res <- data[get(fwd.var)>=range[1] & get(fwd.var)<=range[2]]
+    res <- data[get(var)>=range[1] & get(var)<=range[2]]
     return(res)
   })
   names(data) <- nms
@@ -64,15 +64,15 @@ sample.quantile <- function(data, range, fwd.var){
 #' @examples
 group.factory <- function(data,
                            by = NULL,
-                           grouptype = 'ALL',
-                           names2keep = NULL){
-  if(grouptype == 'ALL'){
+                           group.type = 'ALL',
+                           group.name = NULL){
+  if(group.type == 'ALL'){
     res <- group.by.all(data)
-  }else if(grouptype == 'EACH'){
+  }else if(group.type == 'EACH'){
     by = null.replace(by,DNAMES$SYMBOL)
-    res <- group.by.flag(data,by = by, names2keep = names2keep)
+    res <- group.by.flag(data,by = by, group.name = group.name)
   }else{
-    res <- group.by.flag(data, by = by, names2keep = names2keep, keep.by = FALSE)
+    res <- group.by.flag(data, by = by, group.name = group.name, keep.by = FALSE)
   }
   res
 }
@@ -88,15 +88,16 @@ group.factory <- function(data,
 #' ret.dir <- path.helper(dtype = 'ret')
 #' r1 <- sampling.everyday(20170502, alpha.dir, ret.dir)
 sampling.everyday <- function(date, alpha.dir, ret.dir, univ.dir = NULL, ind.dir = NULL,
-                           grouptype = 'ALL',
-                           names2keep = NULL,
-                           by = NULL){
+                              univ.set = NULL, time.set = NULL,
+                           group.type = 'ALL',
+                           group.name = NULL,
+                           group.by = NULL){
 
-  data <- get.mergeddata(dates = date, alpha.dir, ret.dir, univ.dir, ind.dir)
+  data <- get.mergeddata(dates = date, alpha.dir, ret.dir, univ.dir, ind.dir, univ.set, time.set)
   res <- group.factory(data,
-                        grouptype = grouptype,
-                        names2keep = names2keep,
-                        by = by)
+                        group.type = group.type,
+                        group.name = group.name,
+                        by = group.by)
   return(res)
 
 }
@@ -115,8 +116,15 @@ sampling.everyday <- function(date, alpha.dir, ret.dir, univ.dir = NULL, ind.dir
 #' @examples
 #' df <- .get.mergeddata(20170502, alpha.dir = path.helper(dtype = 'alpha',ver = 'alphaHL'),
 #'                                   ret.dir = path.helper(dtype = 'ret'))
-get.mergeddata <- function(dates, alpha.dir, ret.dir, univ.dir = NULL, ind.dir = NULL){
+get.mergeddata <- function(dates, alpha.dir, ret.dir, univ.dir = NULL, ind.dir = NULL,
+                           univ.set = NULL, time.set = NULL){
   alpha  <- data.read(dates, alpha.dir, des.format = 'data.table')
+  if(!is.null(univ.set)){
+    alpha <- alpha[get(DNAMES$SYMBOL) %in% univ.set]
+  }
+  if(!is.null(time.set)){
+    alpha <- alpha[get(DNAMES$TIME) %in% time.set]
+  }
   ret    <- data.read(dates, ret.dir  , des.format = 'data.table')
   data   <- merge(alpha,ret, all.x = TRUE)
   if(!is.null(univ.dir)){
@@ -132,15 +140,15 @@ get.mergeddata <- function(dates, alpha.dir, ret.dir, univ.dir = NULL, ind.dir =
 #' @param alpha.dir
 #' @param ret.dir
 #' @param univ.dir
-#' @param by
+#' @param group.by
 #' @param quantile.range
 #' @param cache.dir
 #' @param error.tolerant
 #' @param cores
 #' @param verbose
-#' @param grouptype
-#' @param name2keep
-#' @param fwd.var
+#' @param group.type
+#' @param group.name
+#' @param quantile.var
 #'
 #' @return
 #' @export
@@ -153,16 +161,23 @@ sampling.multiday <- function(dates,
                                 alpha.dir,
                                 ret.dir,
                                 univ.dir = NULL,
+                                univ.set = NULL, # only take instrument that is in this set, more convinient than univ.dir
+                                time.set = NULL, # only focus part of the data
                                 group.type = 'ALL',
                                 group.name = NULL,
-                                by = NULL,
+                                group.by = NULL,
                                 quantile.range = c(0,1),
-                                fwd.var = NULL,
+                                quantile.var = NULL,
                                 cache.dir = NULL,
                                 error.tolerant = FALSE,
                                 cores = 1,
                                 verbose = TRUE){
-  ply.func <- ifelse(is.null(cache.dir), llply, l_ply)
+  if(!is.null(cache.dir)){
+    ply.func <- l_ply # no return, save to disk instead
+    dir.create(cache.dir, FALSE, TRUE)
+  }else{
+    ply.func <- llply
+  }
   res <- ply.func(dates, function(day){
 
     out.file <- file.path(cache.dir, paste0('RAW.',day,'.rds'))
@@ -170,14 +185,18 @@ sampling.multiday <- function(dates,
       sampled <- sample.read(out.file)
     }else{
       sampled <- sampling.everyday(day,
-                                alpha.dir, ret.dir, univ.dir,
-                                grouptype = group.type,names2keep = group.name,by = by)
-      if(!(identical(quantile.range, c(0, 1)) ||
-         identical(quantile.range, c(1, 0)))){
-        sampled <- sample.quantile(sampled,
-                                   range = quantile.range,
-                                   fwd.var = fwd.var)
+                                alpha.dir, ret.dir, univ.dir, univ.set, time.set,
+                                group.type = group.type,
+                                group.name = group.name,
+                                group.by   = group.by)
+      if(!is.null(quantile.range) && !is.null(quantile.var)){
+        if(!(identical(sort(quantile.range), c(0, 1)))){
+          sampled <- sample.quantile(sampled,
+                                     range = quantile.range,
+                                     var   = quantile.var)
+        }
       }
+
 
       if(!is.null(sampled)){
         if(!is.null(cache.dir)){

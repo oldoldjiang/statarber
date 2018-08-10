@@ -159,8 +159,6 @@ fit.coef.cvnet <- function(data, xy.spec, d = '19911231', group.name = '00:00:00
     coefs <- laply(y.vars, function(y.var){
       y <- data[, y.var, drop = FALSE]
       x <- data[, x.vars, drop = FALSE]
-      x <- cbind(rep(1, dim(x)[1]), x)
-      colnames(x)[1] <- INTERCEPT
       if(is.null(wgt.var)){
         w <- t(t(rep(1, dim(x)[1])))
       }else{
@@ -168,12 +166,13 @@ fit.coef.cvnet <- function(data, xy.spec, d = '19911231', group.name = '00:00:00
       }
 
       x[is.na(x)|is.infinite(x)] <- 0
-      y[is.na(x)|is.infinite(x)] <- 0
-      w[is.na(x)|is.infinite(x)] <- 0
+      y[is.na(y)|is.infinite(y)] <- 0
+      w[is.na(w)|is.infinite(w)] <- 0
 
       cvfit <- cv.glmnet(x = x, y = y, weights = w, parallel = cores > 1, intercept = intercept)
       coefm <- as.matrix(coef(cvfit, s = cvfit$lambda))
       dimnames(coefm)[[1]][1] <- INTERCEPT
+
       a <- data[, x.vars, drop = FALSE] %*% coefm[-1,]
       fr <- cov(y, a, use = 'pair') / apply(a, 2, var)
       fr.idx <- which.min(abs(fr - ideal.fr))
@@ -385,7 +384,7 @@ fitBeta <- function(dates, sampler.dir,model.cfg=list(ALL="ALL_"),
 #'
 #' @examples
 gen.alp.on.coef <- function(dates, coef, term.path, model,
-                            group.name, alpha.path, alpha.name = model,
+                            group.type, alpha.path, alpha.name = model,
                             lag = 1, mkt = 'CHINA_STOCK', cores = 1,
                             alpha.only = TRUE, verbose = TRUE, use.cache = TRUE,
                             fit.para = list()){
@@ -395,7 +394,7 @@ gen.alp.on.coef <- function(dates, coef, term.path, model,
   }
 
 
-  if(length(group.name)!=1 || length(model)!=1) stop('only support one group or model')
+  if(length(group.type)!=1 || length(model)!=1) stop('only support one group or model')
   if(alpha.only && length(dates)>1){
     use.cache = FALSE
     stop('only support one day call when alpha.only = TRUE')
@@ -404,7 +403,7 @@ gen.alp.on.coef <- function(dates, coef, term.path, model,
   coef = coef[,,,,model, drop = FALSE] #c("Date","Group","X","Y","Model")
 
   alpha.path <- sub('MODELNAME',model, alpha.path)
-  alpha.path <- sub('GROUPNAME', group.name, alpha.path)
+  alpha.path <- sub('GROUPNAME', group.type, alpha.path)
 
   alpha.names <- sub("(fwd)\\.(Ret)\\.(.*)\\.(.*)",
                     paste0(alpha.name, ".\\3.\\4"),
@@ -432,7 +431,7 @@ gen.alp.on.coef <- function(dates, coef, term.path, model,
 
     coefd <- as.integer(dimnames(coef)[[1]])
     coefd <- coefd[max(1, which(coefd <= d) -lag)]
-    if(gsub('\\d+','', group.name)=='G'){
+    if(gsub('\\d+','', group.type)=='G'){
 
     }
     if(order > 1 & length(alpha.name)==1){
@@ -453,13 +452,13 @@ gen.alp.on.coef <- function(dates, coef, term.path, model,
         dimnames(KV)[[1]] <- dimnames(terms)[[1]]
       }
 
-      if(group.name == 'EACH'){
+      if(group.type == 'EACH'){
         common.keys <- intersect(dimnames(KV)[[1]], dimnames(coef)[['G']])
         alpha <- abind(llply(dimnames(coef)$Y, function(y){
           alpha.y <- aaply(KV[common.keys, dimnames(coef)$X[-1] * adrop(coef[as.character(coefd), common.keys, -1, y, model, drop = FALSE])])
         }))
-      }else if(group.name == 'ALL'){
-        beta <- adrop(coef[as.character(coefd), group.name, -1,, model, drop = FALSE], c(1,2,5))
+      }else if(group.type == 'ALL'){
+        beta <- adrop(coef[as.character(coefd), group.type, -1,, model, drop = FALSE], c(1,2,5))
         alpha <- KV[,rownames(beta), drop = FALSE] %*% beta
       }else if(gsub){
         common.keys <- intersect()
@@ -493,14 +492,21 @@ gen.alp.on.coef <- function(dates, coef, term.path, model,
 #' @export
 #'
 #' @examples
-#' dr <- fit.daterange.helper(sdate = 20180101,edate = 20180601)
-#' dr <- fit.daterange.helper(sdate = 20180101,edate = 20180601, only.include.odd.month = TRUE)
-fit.daterange.helper <- function(sdate, edate, include.date = NULL,
-                                 only.include.odd.month     = FALSE,
-                                 only.include.even.month    = FALSE){
+#' dr <- date.helper(sdate = 20180101,edate = 20180601)
+#' dr <- date.helper(sdate = 20180101,edate = 20180601, only.include.odd.month = TRUE)
+date.helper <- function(sdate, edate, include.date = NULL, omit.date = NULL,
+                        only.include.odd.month     = FALSE,
+                        only.include.even.month    = FALSE,
+                        date.file = NULL, date.group = NULL
+                        ){
 
   if(only.include.odd.month && only.include.even.month)
     stop('only.include.odd.month only.include.even.month can not both be TRUE')
+
+  intersect.date <- intersect(include.date, omit.date)
+  if(length(intersect.date)>0){
+    stop(paste('include.date and omit.date should not have intersect'))
+  }
 
   tradingday <- getTradingDayRange(sdate, edate)
   if(only.include.even.month && !only.include.odd.month){
@@ -509,6 +515,13 @@ fit.daterange.helper <- function(sdate, edate, include.date = NULL,
     include.date <- tradingday[tradingday%/%100%%2==1]
   }
 
+  if(!is.null(date.file)){
+    file.date <- fread(date.file)
+    file.date <- file.date[V2 %in% date.group]$V1
+    tradingday <- tradingday[tradingday %in% file.date]
+  }
+
   if(!is.null(include.date)) tradingday <- tradingday[tradingday %in% include.date]
+  if(!is.null(omit.date))    tradingday <- tradingday[!tradingday %in% include.date]
   tradingday
 }

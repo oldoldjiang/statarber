@@ -9,20 +9,22 @@
 #'
 #' @examples
 #' a <- panel.read('~/data/md/CHINA_STOCK/DAILY/test/20130403.h5')
-panel.read <- function(file, verbose = TRUE){
+panel.read <- function(file, verbose = TRUE, checkname = TRUE){
   if(verbose) print(paste('Reading:',file))
   f <- h5file(file,'r')
-  dim <- h5attr(f,'dim')
   names <- h5attr(f, 'names')
   dimnames <- list()
-  for(i in seq_len(length(dim))){
-    dimnames[[names[i]]] <- f[paste0('dimnames_',i)][]
+  for(i in seq_len(length(names))){
+    dimnames[[names[i]]] <- readDataSet(f[[paste0('dimnames_',i)]])
   }
-
+  if(checkname){
+    if(basename(dirname(file))!=dimnames[[length(names)]]) warning(paste('data in',file,'is not the same as the folder'))
+  }
   # for(i in seq_len(length(dim))){
   #   dimnames[[names[i]]] <- h5attr(f,paste0('dimnames_',i))
   # }
-  a <- f['ndarray'][]
+  a <- readDataSet(f[['ndarray']])
+  dim(a) <- f[['ndarray']]$dims
   dimnames(a) <- dimnames
   h5close(f)
   return(a)
@@ -49,15 +51,14 @@ panel.write <- function(data, file, key = 'ndarray', dircreate = FALSE, verbose 
   if(verbose) print(paste('Writing:', file))
   if(file.exists(file) && overwrite == FALSE) stop('Error: file exist, please set overwrite = TRUE')
 
-  if(mode == 'w' && file.exists(file)) file.remove(file) ## I don't known why 'w' break down, fix this issue
+  #if(mode == 'w' && file.exists(file)) file.remove(file) ## I don't known why 'w' break down, fix this issue
 
   f <- h5file(file, mode)
-  f[key] <- data
-  h5attr(f, 'dim') <- dim(data)
+  f[[key]] <- data
   h5attr(f, 'names') <- names(dimnames(data))
 
   for(i in seq_len(length(dim(data)))){
-   f[paste0('dimnames_',i)] <- dimnames(data)[[i]]
+   f[[paste0('dimnames_',i)]] <- dimnames(data)[[i]]
   }
   # for(i in seq_len(length(dim(data)))){
   #   h5attr(f,paste0('dimnames_',i)) <- dimnames(data)[[i]]
@@ -209,17 +210,25 @@ data.read <- function(dates, pathes,
 
     files <- paste0(c(outer(pathes, dates, file.path)),'.h5')
     panel.combine(lapply(files, function(f){
-      if(file.exists(f) || missing.allow){
+      if(file.exists(f)){
         panel.read(f, verbose = verbose)
+      }else if(missing.allow){
+        NULL
+      }else{
+        stop(paste(f,'not found'))
       }
 
     }))
   }else if(des.format == 'data.table'){
+    mergeWrap <- function(x,y){
+      merge(x,y,all = TRUE)
+    }
     rbindlist(lapply(dates, function(d){
-      rbindlist(lapply(pathes,function(p){
+      Reduce(mergeWrap,lapply(pathes,function(p){ # merge by DNAMES$SYMBOL, DNAMES$DATE, DNAMES$TIME
         file <- file.path(p, paste0(d,'.',ext.name))
         tmp <- read.func(file,...)
       }))
+
     }))
   }else{
     stop('unsupported destination format')
