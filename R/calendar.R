@@ -2,7 +2,6 @@
 #'
 #' An integer vector of trading days
 #' @export
-print(getwd())
 trading.calendar <- as.integer(readLines('inst/calendar.csv'))
 
 #' Check trading day

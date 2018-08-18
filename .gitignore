@@ -2,3 +2,7 @@
 *.so
 .DS_Store
 .Rproj.user
+<<<<<<< HEAD
+=======
+.Rd
+>>>>>>> ee89f46b643a8e4604f52ef60fa0a1f3ecb812cc

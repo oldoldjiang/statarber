@@ -13,7 +13,7 @@ Imports:
   Rcpp (>= 0.12.12),
   data.table,
   glmnet,
-  h5,
+  hdf5r,
   nnls,
   plyr,
   timeDate,

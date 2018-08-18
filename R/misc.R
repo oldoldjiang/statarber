@@ -30,18 +30,41 @@ get.exchange.stock <- function(codes){
   exchange
 }
 
+#' generate pathes based rule
+#'
+#' @param dtype
+#' @param mkt
+#' @param freq
+#' @param ver
+#' @param root.dir
+#' @param path.check logical
+#'
+#' @return
+#' @export
+#' @importFrom data.table CJ
+#'
+#' @examples
+#' path.helper(freq = c('DAILY','M1'),dtype = c('md','fdd'),path.check = FALSE)
 path.helper <- function(dtype = 'md',mkt = 'CHINA_STOCK',freq = 'DAILY',
-                        ver = 'tushare', root.dir = '~/ics', path.check = TRUE){
-    comb  <- CJ(dtype, mkt, freq, ver)
+                        ver = 'test', root.dir = '~/data', path.check = TRUE){
+    comb  <- CJ(root.dir, dtype, mkt, freq, ver)
     valid <- lapply(1:nrow(comb), function(i){
       p <- paste(comb[i,], collapse = '/')
-      p <- file.path(root.dir, p)
       if(path.check && !file.exists(p)){
+        print(paste(p,'not exists'))
         return(NULL)
       }else{
         return(p)
       }
     })
-    valid <- valid[!unlist(lapply(valid,is.null))]
+    valid <- unlist(valid[!unlist(lapply(valid,is.null))])
     return(valid)
 }
+
+endswith <- function(str, matchstr){
+  substr(str, nchar(str)-nchar(matchstr)+1, nchar(str)) == matchstr
+}
+startswith <- function(str, matchstr){
+  substr(str, 1, nchar(str)) == matchstr
+}
+

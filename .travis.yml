@@ -18,6 +18,7 @@ addons:
       - build-essential
       - libtool
       - libmagick++-dev
+      - libhdf5-dev
 before_install:
         - cd ..
         - wget "$HDF5_RELEASE_URL/hdf5-${HDF5_VERSION%.*}/hdf5-$HDF5_VERSION/src/hdf5-$HDF5_VERSION.tar.gz"
@@ -27,4 +28,3 @@ before_install:
         - ./configure --prefix=/usr/local --enable-cxx 
         - sudo make install
         - cd -
-        - sudo apt install libhdf5-dev
