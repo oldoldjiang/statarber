@@ -18,5 +18,6 @@ Imports:
   plyr,
   timeDate,
   abind,
+  yaml,
   stringi
 LinkingTo: Rcpp

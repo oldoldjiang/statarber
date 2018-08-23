@@ -6,6 +6,7 @@ prepareData <- function(dates, apathes, rpathes, upath = NULL){
   rnames <- basename(rpathes)
   for(rn in rnames){
     if(anyNA(data[[rn]])){
+      browser()
       stop(paste('NA in',rn))
     }
   }
@@ -41,7 +42,7 @@ calcRetWithAlphaWeight <- function(data, anames, rnames){
 
   # p[1] is alpha name, p[2] is forward return name
   ret <- data[,lapply(pairs,function(p){
-    sum(.SD[[p[1]]] * .SD[[p[2]]], na.rm = TRUE)
+    sum(.SD[[p[1]]] * .SD[[p[2]]], na.rm = TRUE)/sum(abs(.SD[[p[1]]]),na.rm = TRUE) # normalize
   }),by=c(DNAMES$DATE, DNAMES$TIME)]
   return(ret)
 

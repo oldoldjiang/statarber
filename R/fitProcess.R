@@ -191,7 +191,7 @@ fit.process <- function(cfg,
       dates <- getTradingDayRange(from = cfg$date$os.sdate, to = cfg$dates$os.edate)
       alpha.names <- gen.alp.on.coef(dates, coef[,,,,aname,drop=FALSE], term.path = dir.list, model = aname,
                                      group.type = group.type,
-                                     alpha.path = alpha.path, alpha.name = model,
+                                     alpha.path = alpha.path, alpha.name = aname,
                                      lag = coef.lag, mkt = cfg$mkt, cores = cores,
                                      alpha.only = FALSE, verbose = verbose, use.cache = use.cache,
                                      fit.para = fit.para)
@@ -217,11 +217,11 @@ fit.process <- function(cfg,
 
     result <- genAlphaReport(file    = full.report.name,
                              dates   = OOS.days,
-                             apathes = ,
-                             rpathes = ,
+                             apathes = dir.list,
+                             rpathes = rpathes,
                              upath   = upath,
                              focus.period = focus.period,
-                             quicktest    = )
+                             quicktest    = TRUE)
 
     if(save.result){
       saveRDS(result,sub(".pdf$",".rds",full.rpt.name))

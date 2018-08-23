@@ -20,7 +20,7 @@ df.write <- function(data, file, verbose = TRUE, overwrite = FALSE, dircreate = 
     if(dircreate == TRUE) dir.create(dirname(file), FALSE, TRUE)
     if(verbose) print(paste('Writing:', file))
     if(file.exists(file) && overwrite == FALSE) stop('Error: file exist, please set overwrite = TRUE')
-
+    if(mode == 'w' && file.exists(file)) file.remove(file)
     types <- unlist(lapply(data, class))
     if(any(types %in% 'factor')){
       idx <- which(types == 'factor')

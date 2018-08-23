@@ -383,7 +383,7 @@ fitBeta <- function(dates, sampler.dir,model.cfg=list(ALL="ALL_"),
 #' @export
 #'
 #' @examples
-gen.alp.on.coef <- function(dates, coef, term.path, model,
+gen.alp.on.coef <- function(dates, coef, term.path, model.name,
                             group.type, alpha.path, alpha.name = model,
                             lag = 1, mkt = 'CHINA_STOCK', cores = 1,
                             alpha.only = TRUE, verbose = TRUE, use.cache = TRUE,
@@ -402,14 +402,12 @@ gen.alp.on.coef <- function(dates, coef, term.path, model,
 
   coef = coef[,,,,model, drop = FALSE] #c("Date","Group","X","Y","Model")
 
-  alpha.path <- sub('MODELNAME',model, alpha.path)
+  alpha.path <- sub('MODELNAME', model, alpha.path)
   alpha.path <- sub('GROUPNAME', group.type, alpha.path)
 
   alpha.names <- sub("(fwd)\\.(Ret)\\.(.*)\\.(.*)",
                     paste0(alpha.name, ".\\3.\\4"),
                     dimnames(coef)[[4]])
-
-  readOneCache <- FALSE
 
   order <- null.replace(fit.para$order, 1)
 

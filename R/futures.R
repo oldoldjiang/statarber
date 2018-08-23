@@ -12,9 +12,19 @@ is.realcontract <- function(contracts){
 #'
 #' @examples
 #' extract.product(c('IF1705','CS709'))
-extract.product <- function(codes){
+extract.product.future <- function(codes){
   remove_exchange <- gsub('[.].+','',codes)
   product <- gsub('\\d+','',remove_exchange)
   product[nchar(product)==0] <- NA
   product
+}
+
+PRODUCTS <- yaml.load_file('inst/products.yml')
+PRODUCTS <- rbindlist(lapply(PRODUCTS, function(r) as.data.table(r)),fill = TRUE)
+
+get.exchange.future <- function(codes){
+  product <- extract.product.future(codes)
+  product <- data.table(product_id = product)
+  df <- merge(product, PRODUCTS[,c('product_id','exchange'),with = FALSE])
+  return(df[['exchange']])
 }

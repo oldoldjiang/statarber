@@ -3,7 +3,7 @@ genAlphaReport <- function(file, dates, apathes, rpathes, upath, focus.period, q
 
   # save image or print out
   if(!(is.null(file) || file=='')){
-    if(endswith(file,'.pdf')) stop('file should be end with .pdf')
+    if(!endswith(file,'.pdf')) stop('file should be end with .pdf')
     pdf(file)
   }
 

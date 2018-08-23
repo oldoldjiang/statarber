@@ -9,7 +9,7 @@
 #'
 #' @examples
 #' a <- panel.read('~/data/md/CHINA_STOCK/DAILY/test/20130403.h5')
-panel.read <- function(file, verbose = TRUE, checkname = TRUE){
+panel.read <- function(file, verbose = TRUE, checkname = FALSE){
   if(verbose) print(paste('Reading:',file))
   f <- h5file(file,'r')
   names <- h5attr(f, 'names')
@@ -18,7 +18,8 @@ panel.read <- function(file, verbose = TRUE, checkname = TRUE){
     dimnames[[names[i]]] <- readDataSet(f[[paste0('dimnames_',i)]])
   }
   if(checkname){
-    if(basename(dirname(file))!=dimnames[[length(names)]]) warning(paste('data in',file,'is not the same as the folder'))
+    if(basename(dirname(file))!=dimnames[[length(names)]])
+      warning(paste('data in',file,'is not the same as the folder'))
   }
   # for(i in seq_len(length(dim))){
   #   dimnames[[names[i]]] <- h5attr(f,paste0('dimnames_',i))
