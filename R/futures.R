@@ -22,9 +22,16 @@ extract.product.future <- function(codes){
 PRODUCTS <- yaml.load_file('inst/products.yml')
 PRODUCTS <- rbindlist(lapply(PRODUCTS, function(r) as.data.table(r)),fill = TRUE)
 
-get.exchange.future <- function(codes){
-  product <- extract.product.future(codes)
+get.exchange.future <- function(instrument_id){
+  product <- extract.product.future(instrument_id)
   product <- data.table(product_id = product)
-  df <- merge(product, PRODUCTS[,c('product_id','exchange'),with = FALSE])
+  # merge function will reorder the row
+  df <- join(product, PRODUCTS[,c('product_id','exchange'),with = FALSE],by = 'product_id')
   return(df[['exchange']])
+}
+get.multiplier.future <- function(product_id){
+  if(any(nchar(product_id)>2)) stop('Invalid product_id')
+  product <- data.table(product_id = product_id)
+  df <- join(product, PRODUCTS[,c('product_id','volume_multiple'),with = FALSE],by = 'product_id')
+  return(df[['volume_multiple']])
 }

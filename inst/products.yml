@@ -78,6 +78,18 @@ al:
   allow_close_today: yes
   expiry_type: 1
   exchange: SHF
+AP:
+  product_id: AP
+  type: 1
+  price_tick: 1.0
+  volume_multiple: 5.0
+  cost_ratio: 0.0e+00
+  cost_const: 5.4
+  initial_margin_ratio: 0.1
+  allow_open_sell: yes
+  allow_close_today: yes
+  expiry_type: 1
+  exchange: CZC
 au:
   product_id: au
   type: 1
@@ -185,7 +197,7 @@ CY:
   allow_open_sell: yes
   allow_close_today: yes
   expiry_type: 1
-  exchange: SHF
+  exchange: CZC
 fb:
   product_id: fb
   type: 1
@@ -342,6 +354,18 @@ l:
   allow_close_today: yes
   expiry_type: 3
   exchange: DCE
+LR:
+  product_id: LR
+  type: 1
+  price_tick: 1.0
+  volume_multiple: 20.0
+  cost_ratio: 0.0e+00
+  cost_const: 3.6
+  initial_margin_ratio: 0.1
+  allow_open_sell: yes
+  allow_close_today: yes
+  expiry_type: 3
+  exchange: CZC
 m:
   product_id: m
   type: 1
@@ -510,6 +534,42 @@ sc:
   allow_close_today: yes
   expiry_type: 4
   exchange: INE
+SF:
+  product_id: SF
+  type: 1
+  price_tick: 2.0
+  volume_multiple: 5.0
+  cost_ratio: 0.0e+00
+  cost_const: 5.4
+  initial_margin_ratio: 0.09
+  allow_open_sell: yes
+  allow_close_today: yes
+  expiry_type: 4
+  exchange: CZC
+SM:
+  product_id: SM
+  type: 1
+  price_tick: 2.0
+  volume_multiple: 5.0
+  cost_ratio: 0.0e+00
+  cost_const: 5.4
+  initial_margin_ratio: 0.09
+  allow_open_sell: yes
+  allow_close_today: yes
+  expiry_type: 4
+  exchange: CZC
+sn:
+  product_id: sn
+  type: 1
+  price_tick: 10.0
+  volume_multiple: 1.0
+  cost_ratio: 0.0e+00
+  cost_const: 5.4
+  initial_margin_ratio: 0.09
+  allow_open_sell: yes
+  allow_close_today: yes
+  expiry_type: 4
+  exchange: SHF
 SR:
   product_id: SR
   type: 1
@@ -570,6 +630,30 @@ TF:
   allow_close_today: yes
   expiry_type: 7
   exchange: CFE
+TS:
+  product_id: TS
+  type: 1
+  price_tick: 0.005
+  volume_multiple: 10000.0
+  cost_ratio: 0.0e+00
+  cost_const: 7.5
+  initial_margin_ratio: 0.022
+  allow_open_sell: yes
+  allow_close_today: yes
+  expiry_type: 7
+  exchange: CFE
+v:
+  product_id: v
+  type: 1
+  price_tick: 5.0
+  volume_multiple: 5.0
+  cost_ratio: 0.0e+00
+  cost_const: 4.5
+  initial_margin_ratio: 0.09
+  allow_open_sell: yes
+  allow_close_today: yes
+  expiry_type: 3
+  exchange: DCE
 WH:
   product_id: WH
   type: 1
@@ -630,6 +714,18 @@ OP_m:
   allow_close_today: yes
   expiry_type: .na.integer
   exchange: DCE
+ZC:
+  product_id: ZC
+  type: 1
+  price_tick: 0.2
+  volume_multiple: 100
+  cost_ratio: 7.2e-05
+  cost_const: 0.0e+00
+  initial_margin_ratio: 0.08
+  allow_open_sell: yes
+  allow_close_today: yes
+  expiry_type: 1
+  exchange: CZC
 OP_SR:
   product_id: OP_SR
   type: 2
